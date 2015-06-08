@@ -1,0 +1,8 @@
+Hib.ID,Hibernaculum.Name ,State,County,complex,rec.unit,year.of.wn.infection
+1,Declining Small Population,No state,Nada,1,1,NA
+2,Declining Large Population,No state,Nine,1,1,NA
+3,Steady Small Population,No state,Nope,2,2,NA
+4,Steady Large Population,No state,Nix,2,2,NA
+5,Growing Small Population,No state,Negative,3,2,NA
+6,Growing Large Population,No state,Nothing,3,2,NA
+7,Case study,Case state,Case county,4,3,NA

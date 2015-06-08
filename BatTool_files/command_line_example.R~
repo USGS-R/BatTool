@@ -1,0 +1,242 @@
+### Load the library
+library(BatTool)
+??BatTool ## for help file
+
+## to run the model 
+genus = "Lasiurus"
+### My 3 options for species are:
+# genus = "Lasiurus"
+# genus = "Myotis"
+# genus = "Pipistrelle"
+
+## Set model parameters 
+nYears = 20
+reps = 100 # 100 used for demo, use 1000 when running tool for assessment
+lambda.lo = 0.98 # lower lambda value
+lambda.up = 1.09 # upper lambda value
+A0 = 1000000 * .8 # starting adult population 
+J0 = A0 * 0.2 # starting juvenile population
+EnvSto = 0.02 # level of environmental stochasticity 
+K = 10^7 # carrying capacity 
+dmst= FALSE # turn demograhpic stochasticity on or off with TRUE or FALSE
+
+#########################################################################
+## Reference scenario 
+system.time( # system time tells us how long the model runs
+            outRef <- pop_stochastic(reps = reps, enst = EnvSto, dmst = dmst,
+                                     nYears = nYears,
+                                     lambda.lo = lambda.lo,
+                                     lambda.up = lambda.up, genus = genus,
+                                     A0 = A0, J0 = J0, K = K)
+            ) # end of system time function
+
+## Need to create CommandResults folder in Windows on your own
+write.csv(outRef$tpop, file = 'ref_scn.csv')
+
+#########################################################################
+## Scenario 1 
+
+#########################################################################
+#########################################################################
+#########################################################################
+## Take matrix for model
+## The folloinwg is from the main_pop help file
+## takeParA: Matrix of adults bats taken for each season. Each year is a
+##           column, each row is a season: 1) Winter, 2) Spring, 3)
+##           Summer, and 4) Fall. For example, a column if takePar[10,] =
+##           c(1, 2, 0, 9) then during year 10, 1 bat would be taken
+##           during the winter, 2 during the spring, 0 during the summer,
+##           and 9 during the fall.
+
+
+## this is an eample of 20 years worth of take that affects adults
+takeA = matrix(nrow = 4, ncol = nYears, byrow = TRUE, data = c( 
+                                                          ## Winter take
+                                           rep(0, nYears),
+                                           ## Spring take (insert "c(take by year or rep(#, Yrs) 
+                                           ##to apply same amount of take over several)
+                                           c(8000, 2000,rep(3000, 15),0,0,0),
+                                           ## Fall take
+                                           rep(20000, nYears),
+                                           ## Summer take
+                                           rep(0, nYears)))
+
+    
+## Print take matrix to screen
+print(takeA)
+
+## Note that you may also create a matrix in R if you wish to custommize
+## The survival
+outTake1 <- pop_stochastic(reps = reps, enst = EnvSto, dmst = dmst,
+                           nYears = nYears,
+                           lambda.lo = lambda.lo,
+                           lambda.up = lambda.up, genus = genus,
+                           A0 = A0, J0 = J0,
+                           takeParA = takeA,
+                           K = K
+                           )
+
+write.csv(outTake1$tpop, file = 'yearly_results_scn1.csv')
+
+#########################################################################
+## Scenario 2
+
+## to compare different take scenarios, copy TakeA and change take numbers 
+takeA2 = matrix(nrow = 4, byrow = TRUE,
+    data = c( 
+        ## Winter take
+        rep(0, nYears),
+        ## Spring take (insert "c(take by year1, year2, etc) or rep(#, Yrs) 
+        ##to apply same amount of take over several)
+        c(8000, 2000,rep(3000, 15),0,0,0),
+        ## Fall take
+        rep(20000, nYears),
+        ## Summer take
+        rep(0, nYears)))
+
+
+## take of Juveniles
+takeJ2 = matrix(nrow = 4, byrow = TRUE,
+    data = c( 
+        ## Winter take
+        rep(0, nYears),
+        ## Spring take (insert "c(take by year or rep(#, Yrs) 
+        ##to apply same amount of take over several)
+        c(8000, 2000,rep(3000, 15),0,0,0),
+        ## Fall take
+        rep(20000, nYears),
+        ## Summer take
+        rep(0, nYears)))
+
+outTake2 <- pop_stochastic(reps = reps, enst = EnvSto, dmst = dmst,
+                           nYears = nYears,
+                           lambda.lo = lambda.lo,
+                           lambda.up = lambda.up, genus = genus,
+                           A0 = A0, J0 = J0,
+                           takeParA = takeA2,
+                           takeParJ = takeJ2, K = K)
+write.csv(outTake2$tpop, file = 'yearly_results_scn2.csv')
+
+
+#########################################################################
+## Scenario 3
+## Includes WNS
+
+takeA3 = matrix(nrow = 4, byrow = TRUE,
+    data = c( 
+        ## Winter take
+        ##exmaple of making take stochastic over time using poisson disribution
+        ## Note that each year will have the same take for all replicate
+        ## e.g., if year 1 is 1,990 and year 2 is 2,008 then all
+        ## 1,000 replicates will use these values. This assumptionn requiers
+        ## Though before including stochasticity as part of an assessment 
+        ## n= number years take will occur, lambda = mean number of take
+        rpois(n=nYears,lambda=2000),
+        ## Spring take (insert "c(take by year or rep(#, Yrs) 
+        ##to apply same amount of take over several)
+        c(8000, 2000,rep(3000, 15),0,0,0),
+        ## Fall take
+        rep(20000, nYears),
+        ## Summer take
+        rep(0, nYears)))
+
+print(takeA3)
+
+
+## Read in WNS file
+WNS <- read.csv('./Editable_input_files_by_User/whitenoseProbabilitiesIb.csv')[, 2:22]
+print(WNS)
+wnyears <- WNS_input(inf.pr = 0.05,
+                     yrwn.inf = NA,
+                     reps = reps,
+                     nyrs = nYears)
+wnsSur <- wnsSurvGenerator(wnyears = wnyears,
+                           reps = reps,
+                           nyrs = nYears,
+                           wnprob = WNS) 
+
+wnsBirthA <- wnBirthEffect(wnyears = wnyears,
+                           nyrs = nYears,
+                           wnprob = WNS,
+                           AgeClass = "A",
+                           reps = reps)
+
+wnsBirthJ <- wnBirthEffect(wnyears = wnyears,
+                           nyrs = nYears,
+                           wnprob = WNS,
+                           AgeClass = "J",
+                           reps = reps)
+
+outTake3 <- pop_stochastic(reps = reps, enst = EnvSto, dmst = dmst,
+                           nYears = nYears,
+                           lambda.lo = lambda.lo,
+                           lambda.up = lambda.up, genus = genus,
+                           A0 = A0, J0 = J0,
+                           takeParA = takeA, K = K,
+                           wnsSur = wnsSur)
+
+
+## Save results to CSV file 
+write.csv(outTake3$tpop, file = 'yearly_results_scn3.csv')
+
+
+###########################################################################
+###########################################################################
+## Plot results 
+## finding min and max for plot
+minPlot <- min(c(outRef$tpop, outTake1$tpop, outTake2$tpop, outTake3$tpop))
+maxPlot <- max(c(outRef$tpop, outTake1$tpop, outTake2$tpop, outTake3$tpop)) 
+
+##to bring up plot
+x11()
+## creates 2x2 plot
+par(mfcol = c(2,2))
+## plotting baseline
+plot(0:nYears,
+     outRef$popSummary[2,],
+     ylim = c(minPlot, maxPlot),
+     type = 'l', col = 'blue', xlab = "Years", lwd = 3,
+     ylab = "Population size",
+     main = "Ref plot")
+
+lines(0:nYears, outRef$popSummary[1,], col = 'blue', lwd = 3, lty = 2)
+lines(0:nYears, outRef$popSummary[3,], col = 'blue', lwd = 3, lty = 2)
+
+##plotting outtake 1
+plot(0:nYears,
+     outTake1$popSummary[2,],
+     ylim = c(minPlot, maxPlot),
+     type = 'l', col = 'blue', xlab = "Years", lwd = 3,
+     ylab = "Population size",
+     main = "Take 1")
+
+lines(0:nYears, outTake1$popSummary[1,], col = 'blue', lwd = 3, lty = 2)
+lines(0:nYears, outTake1$popSummary[3,], col = 'blue', lwd = 3, lty = 2)
+
+
+##plotting outtake 2
+
+plot(0:nYears,
+     outTake2$popSummary[2,],
+     ylim = c(minPlot, maxPlot),
+     type = 'l', col = 'blue', xlab = "Years", lwd = 3,
+     ylab = "Population size",
+     main = "Take 2")
+
+lines(0:nYears, outTake2$popSummary[1,], col = 'blue', lwd = 3, lty = 2)
+lines(0:nYears, outTake2$popSummary[3,], col = 'blue', lwd = 3, lty = 2)
+
+##plotting outtake 3
+
+plot(0:nYears,
+     outTake3$popSummary[2,],
+     ylim = c(minPlot, maxPlot),
+     type = 'l', col = 'blue', xlab = "Years", lwd = 3,
+     ylab = "Population size",
+     main = "Take 3 with WNS")
+
+lines(0:nYears, outTake3$popSummary[1,], col = 'blue', lwd = 3, lty = 2)
+lines(0:nYears, outTake3$popSummary[3,], col = 'blue', lwd = 3, lty = 2)
+
+
+
